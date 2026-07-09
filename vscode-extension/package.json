@@ -1,0 +1,81 @@
+{
+  "name": "apiwatch-vscode",
+  "displayName": "APIWatch",
+  "description": "VSCode integration for APIWatch local API observability.",
+  "version": "0.3.0",
+  "publisher": "apiwatch",
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:apiwatch.startCollector",
+    "onCommand:apiwatch.stopCollector",
+    "onCommand:apiwatch.openDashboard",
+    "onCommand:apiwatch.showIntegrationGuide",
+    "onCommand:apiwatch.doctor"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "apiwatch.startCollector",
+        "title": "APIWatch: Start Collector"
+      },
+      {
+        "command": "apiwatch.stopCollector",
+        "title": "APIWatch: Stop Collector"
+      },
+      {
+        "command": "apiwatch.openDashboard",
+        "title": "APIWatch: Open Dashboard"
+      },
+      {
+        "command": "apiwatch.showIntegrationGuide",
+        "title": "APIWatch: Show Integration Guide"
+      },
+      {
+        "command": "apiwatch.doctor",
+        "title": "APIWatch: Doctor"
+      }
+    ],
+    "configuration": {
+      "title": "APIWatch",
+      "properties": {
+        "apiwatch.collectorHost": {
+          "type": "string",
+          "default": "127.0.0.1",
+          "description": "APIWatch collector host."
+        },
+        "apiwatch.collectorPort": {
+          "type": "number",
+          "default": 8765,
+          "description": "APIWatch collector port."
+        },
+        "apiwatch.pythonExecutable": {
+          "type": "string",
+          "default": "python",
+          "description": "Python executable used to run the APIWatch collector."
+        },
+        "apiwatch.openDashboardInWebview": {
+          "type": "boolean",
+          "default": false,
+          "description": "Open the APIWatch dashboard inside a VSCode webview instead of the external browser."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "test": "npm run compile && node --test dist/test/*.test.js",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/vscode": "^1.96.0",
+    "typescript": "^5.8.0"
+  }
+}

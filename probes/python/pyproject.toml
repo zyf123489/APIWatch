@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "apiwatch"
+version = "0.2.0"
+description = "面向本地开发态的多框架 API 调用观测探针（ASGI / Flask / Django）"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+keywords = ["observability", "api", "fastapi", "litestar", "flask", "django", "asgi", "tracing", "dev-tools"]
+authors = [{ name = "APIWatch" }]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Framework :: FastAPI",
+    "Topic :: Software Development :: Debuggers",
+    "Topic :: System :: Monitoring",
+]
+# 运行时零强依赖：上报走标准库 urllib + 后台线程，探针保持极简。
+dependencies = []
+
+[project.optional-dependencies]
+# 便于本地联调时一起装上被观测框架
+asgi = ["fastapi", "uvicorn", "litestar"]
+flask = ["flask"]
+django = ["django"]
+all = ["fastapi", "uvicorn", "litestar", "flask", "django"]
+
+[project.urls]
+Homepage = "https://apiwatch.dev"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["apiwatch*"]

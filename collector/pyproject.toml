@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "apiwatch-collector"
+version = "0.2.0"
+description = "APIWatch 本地采集与可视化服务（接收探针事件、SQLite 存储、聚合看板）"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+keywords = ["observability", "api", "collector", "dashboard", "dev-tools"]
+authors = [{ name = "APIWatch" }]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Framework :: FastAPI",
+    "Topic :: System :: Monitoring",
+]
+dependencies = [
+    "fastapi>=0.100",
+    "uvicorn>=0.23",
+    "pydantic>=1.10",
+]
+
+[project.scripts]
+apiwatch = "apiwatch_collector.cli:main"
+
+[project.urls]
+Homepage = "https://apiwatch.dev"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["apiwatch_collector*"]
+
+[tool.setuptools.package-data]
+apiwatch_collector = ["dashboard/*.html"]
