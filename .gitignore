@@ -14,6 +14,7 @@ apiwatch.db
 node_modules/
 dist/
 *.vsix
+.npm-cache/
 
 # Local agent/editor state
 .agents/

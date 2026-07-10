@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 - MVP3
+## 0.3.0 Preview - MVP3
 
 - 新增 VSCode 插件工程：`vscode-extension/`。
 - 新增命令：Start Collector、Stop Collector、Open Dashboard、Show Integration Guide、Doctor。
@@ -8,6 +8,8 @@
 - 插件可识别 FastAPI、Litestar、Flask、Django 项目并生成接入指引。
 - 插件支持配置 collector host/port、Python executable、dashboard 打开方式。
 - 新增 VSCode 插件 TypeScript 单元测试。
+- 统一 Python 探针、collector、dashboard 与插件版本为 `0.3.0`。
+- 新增 `scripts/release_check.py`，用于 Preview 发布前自动验证 Python 测试、插件测试和 FastAPI 端到端闭环。
 
 ## 0.2.x - MVP2 稳定化
 

@@ -16,7 +16,7 @@ from .core.config import ApiWatchConfig
 from .core.event import SCHEMA_VERSION, ApiEvent
 from .integrations.asgi import ApiWatchASGIMiddleware
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
     "ApiWatchASGIMiddleware",

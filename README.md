@@ -2,7 +2,7 @@
 
 > 面向本地开发态的、多框架 / 未来多语言的 **API 调用观测工具**。接入一行探针，即可在本地看板上看到每个 API 的调用次数、耗时、错误率、最近请求与 trace 信息。
 
-轻量版、本地开发态的 API Observability——**本地运行、零后端、多框架统一、一行接入**。当前 MVP2 支持 Python ASGI（FastAPI / Litestar）、Flask、Django，架构按「契约先行」设计，未来可平行扩展到更多语言。
+轻量版、本地开发态的 API Observability——**本地运行、零后端、多框架统一、一行接入**。当前版本为 **0.3.0 Preview / MVP3**：支持 Python ASGI（FastAPI / Litestar）、Flask、Django，并提供 VSCode 插件开发版入口。架构按「契约先行」设计，未来可平行扩展到更多语言。
 
 ---
 
@@ -67,11 +67,13 @@ VSCode 插件开发版：
 
 ```bash
 cd vscode-extension
-npm install
+npm install --cache .npm-cache
 npm run compile
 ```
 
 然后在 VSCode 中打开 `vscode-extension/`，按 F5 启动 Extension Development Host。
+
+> Windows PowerShell 如遇到脚本执行策略限制，使用 `npm.cmd test` / `npm.cmd run compile`。
 
 ---
 
@@ -239,7 +241,27 @@ pip install pytest httpx flask django
 pytest probes/python/tests collector/tests --basetemp .pytest_tmp -p no:cacheprovider
 
 cd vscode-extension
-npm test
+npm.cmd test
+```
+
+发布前完整验证：
+
+```bash
+python scripts/release_check.py
+```
+
+该脚本会依次运行 Python 测试、VSCode 插件编译/测试，并在隔离端口上启动 collector 与 FastAPI demo，验证探针到看板的端到端闭环。
+
+VSCode 插件手动检查清单：
+
+```text
+1. 在 VSCode 中打开 vscode-extension/
+2. 按 F5 启动 Extension Development Host
+3. 执行 APIWatch: Start Collector
+4. 执行 APIWatch: Doctor
+5. 执行 APIWatch: Open Dashboard
+6. 执行 APIWatch: Show Integration Guide
+7. 执行 APIWatch: Stop Collector
 ```
 
 ---
@@ -247,9 +269,9 @@ npm test
 ## 路线（MVP）
 
 - **MVP1**：Python ASGI 探针 + collector + SQLite + 原生看板，请求级观测闭环。
-- **MVP2（当前）**：Flask / Django 集成，route pattern 提取增强，单请求详情页。
+- **MVP2**：Flask / Django 集成，route pattern 提取增强，单请求详情页。
 - **MVP2 稳定化**：CLI doctor/clear、看板筛选/清空、三框架 demo、发布说明。
-- **MVP3（当前）**：VSCode 插件化（命令面板、框架识别、启停 collector、打开 dashboard、接入指引）。
+- **MVP3（当前 0.3.0 Preview）**：VSCode 插件化（命令面板、框架识别、启停 collector、打开 dashboard、接入指引），已具备本地试用与演示条件。
 - **MVP4**：请求内多 span 瀑布图、P99、traceparent 响应头、诊断建议。
 
 **当前明确不做**：请求内多 span 瀑布图、Marketplace 发布、跨服务分布式 tracing、前后端操作关联（均为后续版本）。

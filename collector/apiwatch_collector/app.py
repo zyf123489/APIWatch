@@ -26,7 +26,7 @@ _DASHBOARD_FILE = Path(__file__).parent / "dashboard" / "index.html"
 
 storage = Storage(DB_PATH)
 
-app = FastAPI(title="APIWatch Collector", version="0.2.0")
+app = FastAPI(title="APIWatch Collector", version="0.3.0")
 
 # 本地开发工具：允许跨端口访问（B 模式看板挂在业务应用端口时需要）
 app.add_middleware(
