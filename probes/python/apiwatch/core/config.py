@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+from typing import Optional
+from urllib.parse import urlsplit, urlunsplit
 
 _DEFAULT_COLLECTOR_URL = "http://127.0.0.1:8765"
 _DEFAULT_PROJECT = "default"
@@ -24,6 +26,18 @@ def _env_bool(name: str, default: bool) -> bool:
     return raw.strip().lower() not in _FALSY
 
 
+def _normalize_collector_url(value: str) -> str:
+    if not isinstance(value, str):
+        raise ValueError("collector_url must be a string")
+    parsed = urlsplit(value.strip())
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ValueError("collector_url must be an absolute HTTP(S) URL")
+    if parsed.query or parsed.fragment:
+        raise ValueError("collector_url must not contain a query or fragment")
+    path = parsed.path.rstrip("/")
+    return urlunsplit((parsed.scheme, parsed.netloc, path, "", ""))
+
+
 @dataclass
 class ApiWatchConfig:
     """探针运行配置。"""
@@ -31,17 +45,25 @@ class ApiWatchConfig:
     collector_url: str = field(
         default_factory=lambda: os.environ.get(
             "APIWATCH_COLLECTOR_URL", _DEFAULT_COLLECTOR_URL
-        ).rstrip("/")
+        )
     )
     project: str = field(
         default_factory=lambda: os.environ.get("APIWATCH_PROJECT", _DEFAULT_PROJECT)
     )
     enabled: bool = field(default_factory=lambda: _env_bool("APIWATCH_ENABLED", True))
+    token: Optional[str] = field(
+        default_factory=lambda: os.environ.get("APIWATCH_TOKEN") or None
+    )
     framework: str = "asgi"
     # 上报队列上限，满则丢弃最旧事件，防止内存膨胀
     queue_maxsize: int = 1000
     # 单次上报的网络超时（秒）
     timeout: float = 1.0
+
+    def __post_init__(self) -> None:
+        self.collector_url = _normalize_collector_url(self.collector_url)
+        if self.token is not None:
+            self.token = self.token.strip() or None
 
     @property
     def events_url(self) -> str:

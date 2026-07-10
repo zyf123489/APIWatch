@@ -9,7 +9,12 @@ from __future__ import annotations
 import sqlite3
 import threading
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+from pydantic import ValidationError
+
+from .models import EventIn
 
 # 与 spec/event.schema.json 对应的列（received_at 为 collector 侧接收时间）
 _COLUMNS = [
@@ -50,6 +55,29 @@ CREATE TABLE IF NOT EXISTS events (
 );
 """
 
+_CREATE_REJECTED_SQL = """
+CREATE TABLE IF NOT EXISTS events_rejected (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    original_event_id INTEGER,
+    schema_version TEXT,
+    project TEXT,
+    framework TEXT,
+    method TEXT,
+    path TEXT,
+    route TEXT,
+    status_code INTEGER,
+    duration_ms REAL,
+    trace_id TEXT,
+    span_id TEXT,
+    traceparent TEXT,
+    timestamp TEXT,
+    error_type TEXT,
+    error_message TEXT,
+    rejection_reason TEXT NOT NULL,
+    quarantined_at TEXT NOT NULL
+);
+"""
+
 _INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_events_route ON events(route);",
     "CREATE INDEX IF NOT EXISTS idx_events_ts ON events(timestamp);",
@@ -66,6 +94,7 @@ class Storage:
 
     def __init__(self, db_path: str = "apiwatch.db") -> None:
         self.db_path = db_path
+        self._existing_db = db_path != ":memory:" and Path(db_path).exists()
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._lock = threading.Lock()
@@ -77,6 +106,69 @@ class Storage:
             for stmt in _INDEXES:
                 self._conn.execute(stmt)
             self._conn.commit()
+            self._migrate_to_v1()
+
+    def _migrate_to_v1(self) -> None:
+        """Quarantine legacy rows that cannot satisfy the strict 1.0 contract."""
+        version = int(self._conn.execute("PRAGMA user_version").fetchone()[0])
+        if version >= 1:
+            return
+
+        if self._existing_db:
+            self._backup_database()
+
+        self._conn.execute(_CREATE_REJECTED_SQL)
+        available_columns = {
+            str(row[1]) for row in self._conn.execute("PRAGMA table_info(events)")
+        }
+        missing = [column for column in _COLUMNS if column not in available_columns]
+        if missing:
+            raise RuntimeError(
+                "unsupported APIWatch database schema; missing columns: "
+                + ", ".join(missing)
+            )
+
+        rows = self._conn.execute(
+            "SELECT id, " + ", ".join(_COLUMNS) + " FROM events"
+        ).fetchall()
+        quarantined_at = datetime.now(timezone.utc).isoformat()
+        rejected_rows = []
+        rejected_ids = []
+        for row in rows:
+            event = {column: row[column] for column in _COLUMNS}
+            try:
+                EventIn(**event)
+            except ValidationError as exc:
+                rejected_rows.append(
+                    (row["id"],)
+                    + tuple(event[column] for column in _COLUMNS)
+                    + (str(exc), quarantined_at)
+                )
+                rejected_ids.append((row["id"],))
+
+        with self._conn:
+            if rejected_rows:
+                rejected_columns = ["original_event_id"] + _COLUMNS + [
+                    "rejection_reason",
+                    "quarantined_at",
+                ]
+                placeholders = ", ".join(["?"] * len(rejected_columns))
+                self._conn.executemany(
+                    "INSERT INTO events_rejected "
+                    f"({', '.join(rejected_columns)}) VALUES ({placeholders})",
+                    rejected_rows,
+                )
+                self._conn.executemany("DELETE FROM events WHERE id = ?", rejected_ids)
+            self._conn.execute("PRAGMA user_version = 1")
+
+    def _backup_database(self) -> None:
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        backup_path = f"{self.db_path}.bak.{stamp}"
+        backup = sqlite3.connect(backup_path)
+        try:
+            self._conn.backup(backup)
+        finally:
+            backup.close()
 
     def insert_events(self, events: List[Dict[str, Any]]) -> int:
         """批量写入事件，返回写入条数。缺失字段以 None 兜底。"""
@@ -90,8 +182,8 @@ class Storage:
             tuple(ev.get(c) for c in _COLUMNS) + (received_at,) for ev in events
         ]
         with self._lock:
-            self._conn.executemany(sql, rows)
-            self._conn.commit()
+            with self._conn:
+                self._conn.executemany(sql, rows)
         return len(rows)
 
     @staticmethod

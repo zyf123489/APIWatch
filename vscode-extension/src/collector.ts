@@ -32,6 +32,9 @@ export class CollectorManager {
       '--port',
       String(config.collectorPort)
     ];
+    if (config.collectorToken) {
+      args.push('--token', config.collectorToken);
+    }
     this.process = spawn(config.pythonExecutable, args, {
       cwd: process.cwd(),
       windowsHide: true
@@ -55,9 +58,9 @@ export class CollectorManager {
   }
 }
 
-export async function doctor(config: Pick<ApiWatchConfig, 'collectorHost' | 'collectorPort'>): Promise<DoctorResult> {
+export async function doctor(config: Pick<ApiWatchConfig, 'collectorHost' | 'collectorPort' | 'collectorToken'>): Promise<DoctorResult> {
   try {
-    const summary = await getJson<{ total_requests?: number }>(`${collectorBaseUrl(config)}/summary`);
+    const summary = await getJson<{ total_requests?: number }>(`${collectorBaseUrl(config)}/summary`, config.collectorToken);
     return {
       ok: true,
       message: `Collector OK at ${collectorBaseUrl(config)}`,
@@ -69,13 +72,14 @@ export async function doctor(config: Pick<ApiWatchConfig, 'collectorHost' | 'col
   }
 }
 
-async function isCollectorReachable(config: Pick<ApiWatchConfig, 'collectorHost' | 'collectorPort'>): Promise<boolean> {
+async function isCollectorReachable(config: Pick<ApiWatchConfig, 'collectorHost' | 'collectorPort' | 'collectorToken'>): Promise<boolean> {
   return (await doctor(config)).ok;
 }
 
-function getJson<T>(url: string): Promise<T> {
+function getJson<T>(url: string, token = ''): Promise<T> {
   return new Promise((resolve, reject) => {
-    const req = http.get(url, { timeout: 1500 }, (res) => {
+    const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+    const req = http.get(url, { timeout: 1500, headers }, (res) => {
       if ((res.statusCode ?? 0) < 200 || (res.statusCode ?? 0) >= 300) {
         res.resume();
         reject(new Error(`HTTP ${res.statusCode}`));

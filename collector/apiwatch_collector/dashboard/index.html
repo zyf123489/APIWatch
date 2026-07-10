@@ -199,7 +199,10 @@ function esc(s){
     {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]
   ));
 }
-function methodClass(m){ return "m-" + String(m||"").toLowerCase(); }
+function methodClass(m){
+  const method = String(m || "").toLowerCase();
+  return ["get","post","put","patch","delete"].includes(method) ? "m-" + method : "m-other";
+}
 function statusClass(s){ s=+s||0; return s>=500?"s5":(s>=400?"s4":"s2"); }
 function pct(x){ return ((x||0)*100).toFixed(1) + "%"; }
 function fx(x){ return (+(x||0)).toFixed(1); }

@@ -20,50 +20,27 @@
 
 from __future__ import annotations
 
+from html import escape
 from typing import Optional
+from urllib.parse import urlencode, urlsplit
 
 from ..core.client import ReportClient
 from ..core.config import ApiWatchConfig
 from ..core.capture import build_event, start_capture
 
-# B 模式看板外壳：自包含的轻量 HTML，JS 通过 API_BASE 指向独立 collector 取数。
-# 完整看板仍以 collector 的 dashboard/index.html 为准，这里只是便捷入口。
+# B 模式只提供业务端口入口，完整 Dashboard 始终在 Collector origin 运行。
+# 这样既避免维护第二套渲染逻辑，也不需要浏览器跨域读取 Collector API。
 _MOUNT_DASHBOARD_HTML = """<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
 <title>APIWatch</title>
 <style>
- body{{font-family:-apple-system,Segoe UI,Roboto,sans-serif;margin:24px;color:#1f2933;background:#f5f7fa}}
- h1{{font-size:20px}} .cards{{display:flex;gap:16px;flex-wrap:wrap;margin:16px 0}}
- .card{{background:#fff;border:1px solid #e4e7eb;border-radius:10px;padding:16px 20px;min-width:140px}}
- .card .v{{font-size:26px;font-weight:600}} .card .k{{color:#7b8794;font-size:12px;margin-top:4px}}
- table{{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden}}
- th,td{{padding:8px 12px;text-align:left;border-bottom:1px solid #eef1f4;font-size:13px}}
- th{{background:#f0f4f8;color:#52606d}} .err{{color:#cf1124}}
+ html,body,iframe{width:100%;height:100%;margin:0;border:0}
 </style>
 </head>
 <body>
-<h1>APIWatch · 本地 API 观测</h1>
-<div class="cards" id="cards"></div>
-<h3>接口</h3>
-<table id="apis"><thead><tr><th>Route</th><th>次数</th><th>平均(ms)</th><th>P95(ms)</th><th>错误率</th></tr></thead><tbody></tbody></table>
-<script>
-const API_BASE = "__API_BASE__";
-async function j(p){{try{{const r=await fetch(API_BASE+p);return await r.json()}}catch(e){{return null}}}}
-async function refresh(){{
- const s=await j("/summary");
- if(s){{document.getElementById("cards").innerHTML=[
-   ["总请求",s.total_requests],["平均耗时",(s.avg_duration_ms||0).toFixed(1)+"ms"],
-   ["P95",(s.p95_duration_ms||0).toFixed(1)+"ms"],["错误率",((s.error_rate||0)*100).toFixed(1)+"%"]
- ].map(c=>`<div class="card"><div class="v">${{c[1]}}</div><div class="k">${{c[0]}}</div></div>`).join("");}}
- const a=await j("/apis");
- if(a&&a.apis){{document.querySelector("#apis tbody").innerHTML=a.apis.map(x=>
-   `<tr><td>${{x.route||x.path}}</td><td>${{x.count}}</td><td>${{(x.avg_ms||0).toFixed(1)}}</td><td>${{(x.p95_ms||0).toFixed(1)}}</td><td class="${{x.error_rate>0?'err':''}}">${{((x.error_rate||0)*100).toFixed(1)}}%</td></tr>`
- ).join("");}}
-}}
-refresh();setInterval(refresh,3000);
-</script>
+<iframe src="__DASHBOARD_URL__" title="APIWatch Dashboard"></iframe>
 </body>
 </html>"""
 
@@ -193,11 +170,28 @@ class ApiWatchASGIMiddleware:
         return None
 
     async def _serve_dashboard(self, send) -> None:
-        html = _MOUNT_DASHBOARD_HTML.replace("__API_BASE__", self.config.collector_url)
+        dashboard_url = f"{self.config.collector_url}/dashboard"
+        if self.config.token:
+            dashboard_url += "?" + urlencode({"token": self.config.token})
+        origin = urlsplit(self.config.collector_url)
+        frame_source = f"{origin.scheme}://{origin.netloc}"
+        html = _MOUNT_DASHBOARD_HTML.replace(
+            "__DASHBOARD_URL__", escape(dashboard_url, quote=True)
+        )
         body = html.encode("utf-8")
         await send({
             "type": "http.response.start",
             "status": 200,
-            "headers": [(b"content-type", b"text/html; charset=utf-8")],
+            "headers": [
+                (b"content-type", b"text/html; charset=utf-8"),
+                (
+                    b"content-security-policy",
+                    (
+                        "default-src 'none'; "
+                        f"frame-src {frame_source}; "
+                        "style-src 'unsafe-inline'; base-uri 'none'"
+                    ).encode("ascii"),
+                ),
+            ],
         })
         await send({"type": "http.response.body", "body": body})

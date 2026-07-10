@@ -54,13 +54,17 @@ function readConfig(): ApiWatchConfig {
   return {
     collectorHost: config.get<string>('collectorHost', '127.0.0.1'),
     collectorPort: config.get<number>('collectorPort', 8765),
+    collectorToken: config.get<string>('collectorToken', ''),
     pythonExecutable: config.get<string>('pythonExecutable', 'python'),
     openDashboardInWebview: config.get<boolean>('openDashboardInWebview', false)
   };
 }
 
 async function openDashboard(config: ApiWatchConfig, context: vscode.ExtensionContext): Promise<void> {
-  const url = `${collectorBaseUrl(config)}/dashboard`;
+  const tokenQuery = config.collectorToken
+    ? `?token=${encodeURIComponent(config.collectorToken)}`
+    : '';
+  const url = `${collectorBaseUrl(config)}/dashboard${tokenQuery}`;
   if (!config.openDashboardInWebview) {
     await vscode.env.openExternal(vscode.Uri.parse(url));
     return;

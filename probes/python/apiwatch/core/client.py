@@ -77,7 +77,7 @@ class ReportClient:
         req = urllib.request.Request(
             self._config.events_url,
             data=data,
-            headers={"Content-Type": "application/json"},
+            headers=self._headers(),
             method="POST",
         )
         try:
@@ -86,3 +86,9 @@ class ReportClient:
         except (urllib.error.URLError, OSError):
             # collector 不可用：静默丢弃
             pass
+
+    def _headers(self) -> dict[str, str]:
+        headers = {"Content-Type": "application/json"}
+        if self._config.token:
+            headers["Authorization"] = f"Bearer {self._config.token}"
+        return headers

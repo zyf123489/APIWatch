@@ -54,6 +54,11 @@
           "default": 8765,
           "description": "APIWatch collector port."
         },
+        "apiwatch.collectorToken": {
+          "type": "string",
+          "default": "",
+          "description": "Optional APIWatch collector access token. Required for non-loopback collectors."
+        },
         "apiwatch.pythonExecutable": {
           "type": "string",
           "default": "python",

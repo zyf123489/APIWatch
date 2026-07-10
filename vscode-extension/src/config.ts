@@ -1,6 +1,7 @@
 export interface ApiWatchConfig {
   collectorHost: string;
   collectorPort: number;
+  collectorToken: string;
   pythonExecutable: string;
   openDashboardInWebview: boolean;
 }
