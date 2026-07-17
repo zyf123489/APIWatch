@@ -266,18 +266,3 @@ VSCode 插件手动检查清单：
 
 ---
 
-## 路线（MVP）
-
-- **MVP1**：Python ASGI 探针 + collector + SQLite + 原生看板，请求级观测闭环。
-- **MVP2**：Flask / Django 集成，route pattern 提取增强，单请求详情页。
-- **MVP2 稳定化**：CLI doctor/clear、看板筛选/清空、三框架 demo、发布说明。
-- **MVP3（当前 0.3.0 Preview）**：VSCode 插件化（命令面板、框架识别、启停 collector、打开 dashboard、接入指引），已具备本地试用与演示条件。
-- **MVP4**：请求内多 span 瀑布图、P99、traceparent 响应头、诊断建议。
-
-**当前明确不做**：请求内多 span 瀑布图、Marketplace 发布、跨服务分布式 tracing、前后端操作关联（均为后续版本）。
-
----
-
-## 许可证
-
-MIT
